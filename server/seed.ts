@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from './db.js';
 
 type ProductSeed = { name: string; website: string; isPrimary?: boolean };
 

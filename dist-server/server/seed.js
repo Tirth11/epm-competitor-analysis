@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from './db.js';
 const products = [
     { name: 'ARCON|EPM', website: 'https://arconnet.com', isPrimary: true },
     { name: 'CyberArk Endpoint Privilege Manager', website: 'https://www.cyberark.com' },

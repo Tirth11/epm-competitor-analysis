@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from './db.js';
 export function buildInsights() {
     const primary = db.prepare('SELECT id, name FROM products WHERE is_primary = 1 LIMIT 1').get();
     if (!primary)

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { db } from './db';
+import { db } from './db.js';
 
 function quickHash(input: string) {
   let h = 0;
