@@ -1,5 +1,39 @@
 import Database from 'better-sqlite3';
 export const db = new Database('epm_competitor.db');
+function hasColumn(table, column) {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+    return columns.some((c) => c.name === column);
+}
+function migrateFeaturesTable() {
+    const hasNotes = hasColumn('features', 'notes');
+    const hasSource = hasColumn('features', 'source_url');
+    if (!hasNotes && !hasSource)
+        return;
+    db.exec(`
+    BEGIN;
+      CREATE TABLE IF NOT EXISTS features_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        category TEXT NOT NULL,
+        sub_category TEXT,
+        status TEXT NOT NULL,
+        last_updated TEXT NOT NULL,
+        FOREIGN KEY (product_id) REFERENCES products(id)
+      );
+
+      INSERT INTO features_new (id, product_id, name, category, sub_category, status, last_updated)
+      SELECT id, product_id, name, category, sub_category, status, last_updated
+      FROM features;
+
+      DROP TABLE features;
+      ALTER TABLE features_new RENAME TO features;
+
+      CREATE INDEX IF NOT EXISTS idx_features_product ON features(product_id);
+      CREATE INDEX IF NOT EXISTS idx_features_category ON features(category);
+    COMMIT;
+  `);
+}
 export function initDb() {
     db.pragma('journal_mode = WAL');
     db.exec(`
@@ -18,8 +52,6 @@ export function initDb() {
       category TEXT NOT NULL,
       sub_category TEXT,
       status TEXT NOT NULL,
-      notes TEXT,
-      source_url TEXT,
       last_updated TEXT NOT NULL,
       FOREIGN KEY (product_id) REFERENCES products(id)
     );
@@ -50,5 +82,7 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_features_product ON features(product_id);
     CREATE INDEX IF NOT EXISTS idx_features_category ON features(category);
     CREATE INDEX IF NOT EXISTS idx_updates_created ON updates(created_at DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_sources_unique ON sources(product_id, source_type, url);
   `);
+    migrateFeaturesTable();
 }

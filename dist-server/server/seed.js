@@ -1,28 +1,140 @@
 import { db } from './db.js';
 const products = [
-    { name: 'ARCON|EPM', website: 'https://arconnet.com', isPrimary: true },
-    { name: 'CyberArk Endpoint Privilege Manager', website: 'https://www.cyberark.com' },
-    { name: 'BeyondTrust Endpoint Privilege Management', website: 'https://www.beyondtrust.com' },
-    { name: 'Delinea Privilege Manager', website: 'https://delinea.com' },
-    { name: 'ManageEngine Endpoint Central / PAM360', website: 'https://www.manageengine.com' },
-    { name: 'Netwrix Endpoint Privilege Manager', website: 'https://www.netwrix.com' },
-    { name: 'Securden Endpoint Privilege Manager', website: 'https://www.securden.com' },
-    { name: 'Heimdal Privileged Access Management', website: 'https://heimdalsecurity.com' },
-    { name: 'Microsoft Endpoint Privilege Management (Intune Suite)', website: 'https://www.microsoft.com' },
-    { name: 'Ivanti Endpoint Manager (Privilege Control)', website: 'https://www.ivanti.com' },
-    { name: 'Broadcom (Symantec) Endpoint Privilege Management', website: 'https://www.broadcom.com' },
-    { name: 'PolicyPak Endpoint Privilege Manager', website: 'https://www.policypak.com' },
-    { name: 'Admin By Request', website: 'https://www.adminbyrequest.com' },
-    { name: 'ThreatLocker Application + Privilege Control', website: 'https://www.threatlocker.com' },
-    { name: 'One Identity Safeguard', website: 'https://www.oneidentity.com' },
-];
-const baselineFeatures = [
-    { name: 'Least privilege enforcement', category: 'Privilege Control', subCategory: 'Core' },
-    { name: 'Temporary admin elevation', category: 'Privilege Control', subCategory: 'Just-in-time access' },
-    { name: 'Application whitelisting', category: 'Application Control', subCategory: 'Allow/deny policies' },
-    { name: 'Audit trail and forensics', category: 'Auditing', subCategory: 'Session and event logs' },
-    { name: 'Policy automation', category: 'Policy Management', subCategory: 'Workflow' },
-    { name: 'SIEM integrations', category: 'Integrations', subCategory: 'Security Operations' },
+    {
+        name: 'CyberArk Endpoint Privilege Manager',
+        website: 'https://www.cyberark.com/products/endpoint-privilege-manager/',
+        sources: [
+            { type: 'product_page', url: 'https://www.cyberark.com/products/endpoint-privilege-manager/' },
+            { type: 'docs', url: 'https://docs.cyberark.com' },
+            { type: 'release_notes', url: 'https://www.cyberark.com/resources/release-notes' },
+            { type: 'blog', url: 'https://www.cyberark.com/blog/' },
+        ],
+    },
+    {
+        name: 'BeyondTrust Endpoint Privilege Management',
+        website: 'https://www.beyondtrust.com/products/endpoint-privilege-management',
+        sources: [
+            { type: 'product_page', url: 'https://www.beyondtrust.com/products/endpoint-privilege-management' },
+            { type: 'release_notes', url: 'https://www.beyondtrust.com/docs/release-notes' },
+            { type: 'blog', url: 'https://www.beyondtrust.com/blog' },
+        ],
+    },
+    {
+        name: 'Delinea Privilege Manager',
+        website: 'https://delinea.com/products/privilege-manager',
+        sources: [
+            { type: 'product_page', url: 'https://delinea.com/products/privilege-manager' },
+            { type: 'docs', url: 'https://docs.delinea.com' },
+            { type: 'release_notes', url: 'https://docs.delinea.com/online-help/products/pm/release-notes' },
+            { type: 'blog', url: 'https://delinea.com/blog' },
+        ],
+    },
+    {
+        name: 'ManageEngine Endpoint Central',
+        website: 'https://www.manageengine.com/products/desktop-central/',
+        sources: [
+            { type: 'product_page', url: 'https://www.manageengine.com/products/desktop-central/' },
+        ],
+    },
+    {
+        name: 'ManageEngine PAM360',
+        website: 'https://www.manageengine.com/privileged-access-management/',
+        sources: [
+            { type: 'product_page', url: 'https://www.manageengine.com/privileged-access-management/' },
+        ],
+    },
+    {
+        name: 'Netwrix Endpoint Privilege Manager',
+        website: 'https://www.netwrix.com/endpoint_privilege_manager.html',
+        sources: [
+            { type: 'product_page', url: 'https://www.netwrix.com/endpoint_privilege_manager.html' },
+        ],
+    },
+    {
+        name: 'PolicyPak Least Privilege Manager',
+        website: 'https://www.policypak.com/products/least-privilege-manager/',
+        sources: [
+            { type: 'product_page', url: 'https://www.policypak.com/products/least-privilege-manager/' },
+        ],
+    },
+    {
+        name: 'Securden Endpoint Privilege Manager',
+        website: 'https://www.securden.com/windows-privilege-manager/index.html',
+        sources: [
+            { type: 'product_page', url: 'https://www.securden.com/windows-privilege-manager/index.html' },
+        ],
+    },
+    {
+        name: 'Heimdal Privileged Access Management',
+        website: 'https://heimdalsecurity.com/en/products/privileged-access-management',
+        sources: [
+            { type: 'product_page', url: 'https://heimdalsecurity.com/en/products/privileged-access-management' },
+        ],
+    },
+    {
+        name: 'Microsoft Intune Endpoint Privilege Management',
+        website: 'https://learn.microsoft.com/en-us/mem/intune/protect/epm-overview',
+        sources: [
+            { type: 'product_page', url: 'https://learn.microsoft.com/en-us/mem/intune/protect/epm-overview' },
+            { type: 'docs', url: 'https://learn.microsoft.com' },
+            { type: 'release_notes', url: 'https://learn.microsoft.com/en-us/mem/intune/fundamentals/whats-new' },
+        ],
+    },
+    {
+        name: 'Ivanti Endpoint Manager',
+        website: 'https://www.ivanti.com/products/endpoint-manager',
+        sources: [
+            { type: 'product_page', url: 'https://www.ivanti.com/products/endpoint-manager' },
+            { type: 'docs', url: 'https://help.ivanti.com' },
+            { type: 'release_notes', url: 'https://forums.ivanti.com/s/article/Release-Notes' },
+        ],
+    },
+    {
+        name: 'Ivanti Application Control',
+        website: 'https://www.ivanti.com/products/application-control',
+        sources: [
+            { type: 'product_page', url: 'https://www.ivanti.com/products/application-control' },
+            { type: 'docs', url: 'https://help.ivanti.com' },
+        ],
+    },
+    {
+        name: 'Broadcom (Symantec) Endpoint Privilege Management',
+        website: 'https://www.broadcom.com/products/cybersecurity/endpoint/endpoint-privilege-management',
+        sources: [
+            {
+                type: 'product_page',
+                url: 'https://www.broadcom.com/products/cybersecurity/endpoint/endpoint-privilege-management',
+            },
+        ],
+    },
+    {
+        name: 'Admin By Request',
+        website: 'https://www.adminbyrequest.com/en/endpoint-privilege-management',
+        sources: [
+            { type: 'product_page', url: 'https://www.adminbyrequest.com/en/endpoint-privilege-management' },
+        ],
+    },
+    {
+        name: 'ThreatLocker',
+        website: 'https://www.threatlocker.com/platform/application-control',
+        sources: [
+            { type: 'product_page', url: 'https://www.threatlocker.com/platform/application-control' },
+        ],
+    },
+    {
+        name: 'One Identity Safeguard',
+        website: 'https://www.oneidentity.com/products/safeguard/',
+        sources: [
+            { type: 'product_page', url: 'https://www.oneidentity.com/products/safeguard/' },
+        ],
+    },
+    {
+        name: 'Avecto Defendpoint (Legacy Reference)',
+        website: 'https://www.beyondtrust.com/resources/glossary/avecto-defendpoint',
+        sources: [
+            { type: 'product_page', url: 'https://www.beyondtrust.com/resources/glossary/avecto-defendpoint' },
+        ],
+    },
 ];
 const arconFeatures = [
     { name: 'Platform support for Windows, macOS, and Linux/Unix', category: 'Platform Support', subCategory: 'Cross-platform endpoints' },
@@ -68,47 +180,36 @@ const arconFeatures = [
     { name: 'Endpoint Backup and Restore', category: 'Remote Operations, Resilience & Endpoint Management', subCategory: 'Operational resilience' },
     { name: 'Vulnerability Scanning for Processes', category: 'Security & Risk Management', subCategory: 'CVE-based process risk detection' },
 ];
-function randomStatus() {
-    return ['Available', 'Partial', 'Planned'][Math.floor(Math.random() * 3)];
-}
 export function seedData() {
-    const count = db.prepare('SELECT COUNT(*) as count FROM products').get();
-    if (count.count > 0)
-        return;
-    const insertProduct = db.prepare('INSERT INTO products (name, website, is_primary) VALUES (@name, @website, @isPrimary)');
-    const insertFeature = db.prepare(`
-    INSERT INTO features (product_id, name, category, sub_category, status, notes, source_url, last_updated)
-    VALUES (@productId, @name, @category, @subCategory, @status, @notes, @sourceUrl, @lastUpdated)
+    const insertProduct = db.prepare(`
+    INSERT INTO products (name, website, is_primary)
+    VALUES (@name, @website, 0)
+    ON CONFLICT(name) DO UPDATE SET website = excluded.website
   `);
+    const selectProduct = db.prepare('SELECT id FROM products WHERE name = ?');
+    const deleteProduct = db.prepare('DELETE FROM products WHERE id = ?');
+    const deleteFeatures = db.prepare('DELETE FROM features WHERE product_id = ?');
+    const deleteUpdates = db.prepare('DELETE FROM updates WHERE product_id = ?');
+    const deleteSources = db.prepare('DELETE FROM sources WHERE product_id = ?');
     const insertSource = db.prepare('INSERT INTO sources (product_id, source_type, url) VALUES (?, ?, ?)');
-    const insertUpdate = db.prepare(`
-    INSERT INTO updates (product_id, update_type, title, detail, source_url)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-    for (const p of products) {
-        const info = insertProduct.run({
-            name: p.name,
-            website: p.website,
-            isPrimary: p.isPrimary ? 1 : 0,
-        });
-        const productId = Number(info.lastInsertRowid);
-        insertSource.run(productId, 'website', p.website);
-        insertSource.run(productId, 'release_notes', `${p.website.replace(/\/$/, '')}/resources`);
-        insertSource.run(productId, 'blog', `${p.website.replace(/\/$/, '')}/blog`);
-        for (const f of baselineFeatures) {
-            const status = p.isPrimary ? 'Available' : randomStatus();
-            insertFeature.run({
-                productId,
-                name: f.name,
-                category: f.category,
-                subCategory: f.subCategory,
-                status,
-                notes: p.isPrimary ? 'Current capability in our platform.' : 'Derived from public product positioning.',
-                sourceUrl: p.website,
-                lastUpdated: new Date().toISOString(),
-            });
+    const activeNames = new Set(['ARCON|EPM', ...products.map((p) => p.name)]);
+    const existing = db.prepare('SELECT id, name FROM products').all();
+    for (const row of existing) {
+        if (!activeNames.has(row.name)) {
+            deleteFeatures.run(row.id);
+            deleteUpdates.run(row.id);
+            deleteSources.run(row.id);
+            deleteProduct.run(row.id);
         }
-        insertUpdate.run(productId, 'announcement', `${p.name} baseline profile added`, 'Initial competitor profile seeded for tracking and benchmarking.', p.website);
+    }
+    for (const p of products) {
+        insertProduct.run({ name: p.name, website: p.website });
+        const info = selectProduct.get(p.name);
+        const productId = info.id;
+        deleteSources.run(productId);
+        for (const source of p.sources) {
+            insertSource.run(productId, source.type, source.url);
+        }
     }
 }
 export function applyArconPrimaryProfile() {
@@ -138,20 +239,20 @@ export function applyArconPrimaryProfile() {
     }
     const featureExists = db.prepare('SELECT id FROM features WHERE product_id = ? AND name = ?');
     const insertFeature = db.prepare(`
-    INSERT INTO features (product_id, name, category, sub_category, status, notes, source_url, last_updated)
-    VALUES (?, ?, ?, ?, 'Available', ?, 'https://arconnet.com', ?)
+    INSERT INTO features (product_id, name, category, sub_category, status, last_updated)
+    VALUES (?, ?, ?, ?, 'Available', ?)
   `);
     for (const feature of arconFeatures) {
         const existing = featureExists.get(arcon.id, feature.name);
         if (existing) {
             db.prepare(`
         UPDATE features
-        SET category = ?, sub_category = ?, status = 'Available', notes = ?, source_url = 'https://arconnet.com', last_updated = ?
+        SET category = ?, sub_category = ?, status = 'Available', last_updated = ?
         WHERE id = ?
-      `).run(feature.category, feature.subCategory, 'Provided by ARCON feature input.', now, existing.id);
+      `).run(feature.category, feature.subCategory, now, existing.id);
             continue;
         }
-        insertFeature.run(arcon.id, feature.name, feature.category, feature.subCategory, 'Provided by ARCON feature input.', now);
+        insertFeature.run(arcon.id, feature.name, feature.category, feature.subCategory, now);
     }
     db.prepare(`
     INSERT INTO updates (product_id, update_type, title, detail, source_url)

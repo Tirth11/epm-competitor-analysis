@@ -6,8 +6,6 @@ export type ComparisonRow = {
   category: string;
   subCategory: string | null;
   status: string;
-  notes: string | null;
-  sourceUrl: string | null;
   lastUpdated: string;
 };
 

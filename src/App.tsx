@@ -134,7 +134,7 @@ function App() {
           <option value="Deprecated">Deprecated</option>
         </select>
         <input
-          placeholder="Search feature or notes"
+          placeholder="Search feature"
           value={filters.search}
           onChange={(e) => setFilters({ ...filters, search: e.target.value })}
         />
@@ -161,8 +161,6 @@ function App() {
                   <th>Category</th>
                   <th>Sub-category</th>
                   <th>Status</th>
-                  <th>Notes</th>
-                  <th>Source</th>
                   <th>Last updated</th>
                 </tr>
               </thead>
@@ -176,8 +174,6 @@ function App() {
                     <td>
                       <span className={`status status-${r.status.toLowerCase()}`}>{r.status}</span>
                     </td>
-                    <td>{r.notes || '-'}</td>
-                    <td>{r.sourceUrl ? <a href={r.sourceUrl}>Reference</a> : '-'}</td>
                     <td>{new Date(r.lastUpdated).toLocaleDateString()}</td>
                   </tr>
                 ))}

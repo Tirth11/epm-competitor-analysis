@@ -16,6 +16,7 @@ const distPath = path.resolve(process.cwd(), 'dist');
 initDb();
 seedData();
 applyArconPrimaryProfile();
+runCompetitorCheck().catch(() => undefined);
 
 app.use(cors());
 app.use(express.json());
@@ -43,8 +44,8 @@ app.get('/api/comparison', (req, res) => {
     values.push(status);
   }
   if (search) {
-    conditions.push('(f.name LIKE ? OR f.notes LIKE ?)');
-    values.push(`%${search}%`, `%${search}%`);
+    conditions.push('(f.name LIKE ? OR f.category LIKE ? OR f.sub_category LIKE ?)');
+    values.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
   if (recentlyUpdated === 'true') {
     conditions.push("datetime(f.last_updated) > datetime('now', '-14 days')");
@@ -60,8 +61,6 @@ app.get('/api/comparison', (req, res) => {
       f.category,
       f.sub_category as subCategory,
       f.status,
-      f.notes,
-      f.source_url as sourceUrl,
       f.last_updated as lastUpdated
     FROM features f
     JOIN products p ON p.id = f.product_id
@@ -118,7 +117,7 @@ app.get('/api/reports/monthly', (_req, res) => {
 
 app.get('/api/export/comparison.csv', (_req, res) => {
   const rows = db.prepare(`
-    SELECT p.name, f.name as feature, f.category, f.sub_category, f.status, f.notes, f.source_url, f.last_updated
+    SELECT p.name, f.name as feature, f.category, f.sub_category, f.status, f.last_updated
     FROM features f
     JOIN products p ON p.id = f.product_id
     ORDER BY p.name, f.category
@@ -130,8 +129,6 @@ app.get('/api/export/comparison.csv', (_req, res) => {
     'Category',
     'Sub Category',
     'Status',
-    'Notes',
-    'Source URL',
     'Last Updated',
   ];
   const data = rows.map((r) =>
@@ -141,8 +138,6 @@ app.get('/api/export/comparison.csv', (_req, res) => {
       r.category,
       r.sub_category,
       r.status,
-      r.notes,
-      r.source_url,
       r.last_updated,
     ]
       .map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`)
@@ -166,23 +161,19 @@ app.post('/api/features', (req, res) => {
     category: z.string().min(1),
     subCategory: z.string().optional(),
     status: z.enum(['Available', 'Partial', 'Planned', 'Deprecated', 'Unknown']),
-    notes: z.string().optional(),
-    sourceUrl: z.string().url().optional(),
   });
 
   const payload = schema.parse(req.body);
   const now = new Date().toISOString();
   const result = db.prepare(`
-    INSERT INTO features (product_id, name, category, sub_category, status, notes, source_url, last_updated)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO features (product_id, name, category, sub_category, status, last_updated)
+    VALUES (?, ?, ?, ?, ?, ?)
   `).run(
     payload.productId,
     payload.name,
     payload.category,
     payload.subCategory ?? null,
     payload.status,
-    payload.notes ?? null,
-    payload.sourceUrl ?? null,
     now
   );
 
@@ -194,7 +185,7 @@ app.post('/api/features', (req, res) => {
     Number(result.lastInsertRowid),
     `Feature added: ${payload.name}`,
     'Feature added manually via dashboard workflow.',
-    payload.sourceUrl ?? null
+    null
   );
 
   res.status(201).json({ id: Number(result.lastInsertRowid) });

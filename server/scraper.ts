@@ -2,6 +2,101 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { db } from './db.js';
 
+type ExtractedFeature = {
+  name: string;
+  category: string;
+  subCategory: string | null;
+};
+
+const MIN_FEATURES = 6;
+
+function normalizeText(text: string) {
+  return text.replace(/\s+/g, ' ').replace(/[•·]+/g, '').trim();
+}
+
+function isFeatureCandidate(text: string) {
+  const lower = text.toLowerCase();
+  if (text.length < 4 || text.length > 140) return false;
+  const blocked = [
+    'cookie',
+    'privacy',
+    'terms',
+    'contact',
+    'careers',
+    'press',
+    'resources',
+    'blog',
+    'pricing',
+    'demo',
+    'login',
+    'sign in',
+    'subscribe',
+  ];
+  return !blocked.some((word) => lower.includes(word));
+}
+
+function pushFeature(
+  features: ExtractedFeature[],
+  seen: Set<string>,
+  name: string,
+  category: string,
+  subCategory: string | null
+) {
+  const cleaned = normalizeText(name);
+  if (!cleaned || !isFeatureCandidate(cleaned)) return;
+  const key = cleaned.toLowerCase();
+  if (seen.has(key)) return;
+  seen.add(key);
+  features.push({
+    name: cleaned,
+    category: category || 'General',
+    subCategory,
+  });
+}
+
+function extractFeaturesFromPage(html: string) {
+  const $ = cheerio.load(html);
+  const root = $('main').first().length ? $('main').first() : $('body');
+  const features: ExtractedFeature[] = [];
+  const seen = new Set<string>();
+
+  const sections = root.find('section');
+  if (sections.length) {
+    sections.each((_, section) => {
+      const $section = $(section);
+      const sectionHeading = normalizeText($section.find('h2').first().text());
+
+      $section.find('ul, ol').each((__, list) => {
+        const $list = $(list);
+        const listHeading = normalizeText($list.prevAll('h3, h4').first().text());
+        const category = sectionHeading || listHeading || 'General';
+        const subCategory = sectionHeading && listHeading ? listHeading : null;
+
+        $list.find('li').each((___, li) => {
+          const text = normalizeText($(li).text());
+          pushFeature(features, seen, text, category, subCategory);
+        });
+      });
+    });
+  }
+
+  if (features.length < MIN_FEATURES) {
+    root.find('ul li, ol li').each((_, li) => {
+      const text = normalizeText($(li).text());
+      pushFeature(features, seen, text, 'General', null);
+    });
+  }
+
+  if (features.length < MIN_FEATURES) {
+    root.find('h3, h4').each((_, heading) => {
+      const text = normalizeText($(heading).text());
+      pushFeature(features, seen, text, 'General', null);
+    });
+  }
+
+  return features;
+}
+
 function quickHash(input: string) {
   let h = 0;
   for (let i = 0; i < input.length; i++) {
@@ -38,6 +133,11 @@ export async function runCompetitorCheck() {
     INSERT INTO updates (product_id, update_type, title, detail, source_url)
     VALUES (?, ?, ?, ?, ?)
   `);
+  const deleteFeatures = db.prepare('DELETE FROM features WHERE product_id = ?');
+  const insertFeature = db.prepare(`
+    INSERT INTO features (product_id, name, category, sub_category, status, last_updated)
+    VALUES (?, ?, ?, ?, 'Available', ?)
+  `);
 
   for (const source of sources) {
     try {
@@ -47,8 +147,42 @@ export async function runCompetitorCheck() {
       const title = $('title').first().text().trim() || `${source.product_name} page`;
       const h1 = $('h1').first().text().trim();
       const combined = `${title} ${h1}`.trim();
-      const hash = quickHash(combined || html.slice(0, 1200));
+      const extractedFeatures =
+        source.source_type === 'product_page' ? extractFeaturesFromPage(html) : [];
+      const featureHash = extractedFeatures.map((f) => f.name).join('|');
+      const hash = quickHash(featureHash || combined || html.slice(0, 1200));
       const now = new Date().toISOString();
+
+      if (source.source_type === 'product_page' && extractedFeatures.length >= MIN_FEATURES) {
+        const tx = db.transaction(() => {
+          deleteFeatures.run(source.product_id);
+          for (const feature of extractedFeatures) {
+            insertFeature.run(
+              source.product_id,
+              feature.name,
+              feature.category,
+              feature.subCategory,
+              now
+            );
+          }
+        });
+        tx();
+        insertUpdate.run(
+          source.product_id,
+          'changed',
+          `${source.product_name}: features refreshed`,
+          `Extracted ${extractedFeatures.length} features from product page.`,
+          source.url
+        );
+      } else if (source.source_type === 'product_page') {
+        insertUpdate.run(
+          source.product_id,
+          'announcement',
+          `${source.product_name}: feature extraction incomplete`,
+          'Insufficient feature signals found on the product page.',
+          source.url
+        );
+      }
 
       if (source.last_hash && source.last_hash !== hash) {
         const updateType = maybeInferUpdateType(combined);
