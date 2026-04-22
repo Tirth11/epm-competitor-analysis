@@ -1,0 +1,156 @@
+:root {
+  font-family: Inter, 'Segoe UI', Roboto, Arial, sans-serif;
+  color: #12263a;
+  background: #f6f8fc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f6f8fc;
+}
+
+a {
+  color: #0f62fe;
+  text-decoration: none;
+}
+
+.page {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.topbar {
+  background: #fff;
+  border: 1px solid #dbe5f1;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.topbar h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+button,
+select,
+input {
+  border: 1px solid #c7d5e6;
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: #fff;
+}
+
+button {
+  background: #0f62fe;
+  color: #fff;
+  cursor: pointer;
+}
+
+.filters {
+  margin: 16px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 16px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #dbe5f1;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.table-card h2,
+.card h3 {
+  margin-top: 0;
+}
+
+.table-wrap {
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  text-align: left;
+  border-bottom: 1px solid #eef3fa;
+  padding: 10px;
+  vertical-align: top;
+}
+
+.status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-available {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-partial {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-planned {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-deprecated {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.updates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.update-item {
+  border: 1px solid #eef3fa;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.muted {
+  color: #4a6076;
+  margin: 8px 0;
+}
+
+@media (max-width: 1150px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
