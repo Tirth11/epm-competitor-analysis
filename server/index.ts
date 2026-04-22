@@ -206,12 +206,13 @@ cron.schedule('0 */6 * * *', () => {
   runCompetitorCheck().catch(() => undefined);
 });
 
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(distPath));
-  app.get(/.*/, (_req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
-  });
-}
+// Serve static files from dist folder
+app.use(express.static(distPath));
+
+// Catch-all route: serve index.html for SPA routing
+app.use((_req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
 
 app.listen(port, host, () => {
   console.log(`EPM competitor tracker API running on http://${host}:${port}`);
