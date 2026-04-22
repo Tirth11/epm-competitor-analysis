@@ -7,9 +7,9 @@ export function buildInsights() {
     SELECT DISTINCT f.name
     FROM features f
     JOIN products p ON p.id = f.product_id
-    WHERE p.is_primary = 0 AND f.status = 'Available'
+    WHERE p.is_primary = 0 AND f.change_type != 'removed'
   `).all();
-    const myFeatures = db.prepare("SELECT DISTINCT name FROM features WHERE product_id = ? AND status = 'Available'").all(primary.id);
+    const myFeatures = db.prepare("SELECT DISTINCT name FROM features WHERE product_id = ? AND change_type != 'removed'").all(primary.id);
     const mySet = new Set(myFeatures.map((f) => f.name));
     const competitorSet = new Set(competitorFeatures.map((f) => f.name));
     const gaps = [...competitorSet].filter((f) => !mySet.has(f));

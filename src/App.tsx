@@ -5,7 +5,7 @@ import type { ComparisonRow, Insights, Product, UpdateItem } from './types';
 type Filters = {
   product: string;
   category: string;
-  status: string;
+  changeType: string;
   search: string;
   recentlyUpdated: boolean;
 };
@@ -13,7 +13,7 @@ type Filters = {
 const defaultFilters: Filters = {
   product: '',
   category: '',
-  status: '',
+  changeType: '',
   search: '',
   recentlyUpdated: false,
 };
@@ -36,7 +36,7 @@ function App() {
     const query: Record<string, string> = {};
     if (filters.product) query.product = filters.product;
     if (filters.category) query.category = filters.category;
-    if (filters.status) query.status = filters.status;
+    if (filters.changeType) query.changeType = filters.changeType;
     if (filters.search) query.search = filters.search;
     if (filters.recentlyUpdated) query.recentlyUpdated = 'true';
 
@@ -51,7 +51,7 @@ function App() {
     setRows(c);
     setUpdates(u);
     setInsights(i);
-  }, [filters.product, filters.category, filters.status, filters.search, filters.recentlyUpdated]);
+  }, [filters.product, filters.category, filters.changeType, filters.search, filters.recentlyUpdated]);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,15 +126,17 @@ function App() {
             </option>
           ))}
         </select>
-        <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
-          <option value="">All statuses</option>
-          <option value="Available">Available</option>
-          <option value="Partial">Partial</option>
-          <option value="Planned">Planned</option>
-          <option value="Deprecated">Deprecated</option>
+        <select
+          value={filters.changeType}
+          onChange={(e) => setFilters({ ...filters, changeType: e.target.value })}
+        >
+          <option value="">All change types</option>
+          <option value="new">New</option>
+          <option value="updated">Updated</option>
+          <option value="removed">Removed</option>
         </select>
         <input
-          placeholder="Search feature"
+          placeholder="Search feature or description"
           value={filters.search}
           onChange={(e) => setFilters({ ...filters, search: e.target.value })}
         />
@@ -159,9 +161,11 @@ function App() {
                   <th>Product</th>
                   <th>Feature</th>
                   <th>Category</th>
-                  <th>Sub-category</th>
-                  <th>Status</th>
+                  <th>Description</th>
+                  <th>References</th>
+                  <th>First detected</th>
                   <th>Last updated</th>
+                  <th>Change type</th>
                 </tr>
               </thead>
               <tbody>
@@ -169,12 +173,26 @@ function App() {
                   <tr key={r.id}>
                     <td>{r.product}</td>
                     <td>{r.feature}</td>
-                    <td>{r.category}</td>
-                    <td>{r.subCategory || '-'}</td>
+                    <td>{r.subCategory ? `${r.category} / ${r.subCategory}` : r.category}</td>
+                    <td>{r.description || '-'}</td>
                     <td>
-                      <span className={`status status-${r.status.toLowerCase()}`}>{r.status}</span>
+                      {r.references.length ? (
+                        <div className="reference-list">
+                          {r.references.map((ref, idx) => (
+                            <a key={`${r.id}-${ref}`} href={ref} target="_blank" rel="noreferrer">
+                              Ref {idx + 1}
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        '-'
+                      )}
                     </td>
+                    <td>{new Date(r.firstDetected).toLocaleDateString()}</td>
                     <td>{new Date(r.lastUpdated).toLocaleDateString()}</td>
+                    <td>
+                      <span className={`status status-${r.changeType}`}>{r.changeType}</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

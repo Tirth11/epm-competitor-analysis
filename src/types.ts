@@ -6,7 +6,12 @@ export type ComparisonRow = {
   category: string;
   subCategory: string | null;
   status: string;
+  description: string | null;
+  sourceUrl: string | null;
+  references: string[];
+  firstDetected: string;
   lastUpdated: string;
+  changeType: 'new' | 'updated' | 'removed';
 };
 
 export type UpdateItem = {

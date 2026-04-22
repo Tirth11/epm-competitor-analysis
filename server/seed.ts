@@ -251,17 +251,34 @@ export function applyArconPrimaryProfile() {
     db.prepare('DELETE FROM products WHERE id = ?').run(legacy.id);
   }
 
-  const hasSource = db.prepare('SELECT id FROM sources WHERE product_id = ? AND source_type = ?').get(arcon.id, 'website') as { id: number } | undefined;
+  const hasSource = db.prepare('SELECT id FROM sources WHERE product_id = ? AND source_type = ?').get(arcon.id, 'product_page') as { id: number } | undefined;
   if (!hasSource) {
-    db.prepare('INSERT INTO sources (product_id, source_type, url) VALUES (?, ?, ?)').run(arcon.id, 'website', 'https://arconnet.com');
+    db.prepare('DELETE FROM sources WHERE product_id = ?').run(arcon.id);
+    db.prepare('INSERT INTO sources (product_id, source_type, url) VALUES (?, ?, ?)').run(arcon.id, 'product_page', 'https://arconnet.com');
     db.prepare('INSERT INTO sources (product_id, source_type, url) VALUES (?, ?, ?)').run(arcon.id, 'release_notes', 'https://arconnet.com/resources');
     db.prepare('INSERT INTO sources (product_id, source_type, url) VALUES (?, ?, ?)').run(arcon.id, 'blog', 'https://arconnet.com/blog');
   }
 
   const featureExists = db.prepare('SELECT id FROM features WHERE product_id = ? AND name = ?');
   const insertFeature = db.prepare(`
-    INSERT INTO features (product_id, name, category, sub_category, status, last_updated)
-    VALUES (?, ?, ?, ?, 'Available', ?)
+    INSERT INTO features (
+      product_id,
+      name,
+      category,
+      sub_category,
+      status,
+      description,
+      source_url,
+      first_detected,
+      last_updated,
+      change_type
+    )
+    VALUES (?, ?, ?, ?, 'Available', ?, ?, ?, ?, ?)
+  `);
+  const deleteFeatureSources = db.prepare('DELETE FROM feature_sources WHERE feature_id = ?');
+  const insertFeatureSource = db.prepare(`
+    INSERT OR IGNORE INTO feature_sources (feature_id, source_type, url)
+    VALUES (?, ?, ?)
   `);
 
   for (const feature of arconFeatures) {
@@ -269,19 +286,26 @@ export function applyArconPrimaryProfile() {
     if (existing) {
       db.prepare(`
         UPDATE features
-        SET category = ?, sub_category = ?, status = 'Available', last_updated = ?
+        SET category = ?, sub_category = ?, status = 'Available', source_url = ?, last_updated = ?, change_type = 'updated'
         WHERE id = ?
-      `).run(feature.category, feature.subCategory, now, existing.id);
+      `).run(feature.category, feature.subCategory, 'https://arconnet.com', now, existing.id);
+      deleteFeatureSources.run(existing.id);
+      insertFeatureSource.run(existing.id, 'product_page', 'https://arconnet.com');
       continue;
     }
 
-    insertFeature.run(
+    const result = insertFeature.run(
       arcon.id,
       feature.name,
       feature.category,
       feature.subCategory,
-      now
+      null,
+      'https://arconnet.com',
+      now,
+      now,
+      'new'
     );
+    insertFeatureSource.run(Number(result.lastInsertRowid), 'product_page', 'https://arconnet.com');
   }
 
   db.prepare(`

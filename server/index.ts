@@ -27,7 +27,10 @@ app.get('/api/products', (_req, res) => {
 });
 
 app.get('/api/comparison', (req, res) => {
-  const { product, category, status, search, recentlyUpdated } = req.query as Record<string, string>;
+  const { product, category, status, search, recentlyUpdated, changeType } = req.query as Record<
+    string,
+    string
+  >;
   const conditions: string[] = [];
   const values: unknown[] = [];
 
@@ -43,9 +46,15 @@ app.get('/api/comparison', (req, res) => {
     conditions.push('f.status = ?');
     values.push(status);
   }
+  if (changeType) {
+    conditions.push('f.change_type = ?');
+    values.push(changeType);
+  }
   if (search) {
-    conditions.push('(f.name LIKE ? OR f.category LIKE ? OR f.sub_category LIKE ?)');
-    values.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    conditions.push(
+      '(f.name LIKE ? OR f.category LIKE ? OR f.sub_category LIKE ? OR f.description LIKE ?)'
+    );
+    values.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
   }
   if (recentlyUpdated === 'true') {
     conditions.push("datetime(f.last_updated) > datetime('now', '-14 days')");
@@ -61,14 +70,40 @@ app.get('/api/comparison', (req, res) => {
       f.category,
       f.sub_category as subCategory,
       f.status,
-      f.last_updated as lastUpdated
+      f.description,
+      f.source_url as sourceUrl,
+      f.first_detected as firstDetected,
+      f.last_updated as lastUpdated,
+      f.change_type as changeType,
+      group_concat(fs.url, '||') as references
     FROM features f
     JOIN products p ON p.id = f.product_id
+    LEFT JOIN feature_sources fs ON fs.feature_id = f.id
     ${where}
+    GROUP BY f.id
     ORDER BY datetime(f.last_updated) DESC, p.is_primary DESC, p.name ASC
-  `).all(...values);
+  `).all(...values) as Array<{
+    id: number;
+    product: string;
+    isPrimary: number;
+    feature: string;
+    category: string;
+    subCategory: string | null;
+    status: string;
+    description: string | null;
+    sourceUrl: string | null;
+    firstDetected: string;
+    lastUpdated: string;
+    changeType: string;
+    references: string | null;
+  }>;
 
-  res.json(rows);
+  const formatted = rows.map((row) => ({
+    ...row,
+    references: row.references ? String(row.references).split('||') : [],
+  }));
+
+  res.json(formatted);
 });
 
 app.get('/api/updates', (_req, res) => {
@@ -117,9 +152,22 @@ app.get('/api/reports/monthly', (_req, res) => {
 
 app.get('/api/export/comparison.csv', (_req, res) => {
   const rows = db.prepare(`
-    SELECT p.name, f.name as feature, f.category, f.sub_category, f.status, f.last_updated
+    SELECT
+      p.name,
+      f.name as feature,
+      f.category,
+      f.sub_category,
+      f.status,
+      f.description,
+      f.source_url,
+      f.first_detected,
+      f.last_updated,
+      f.change_type,
+      group_concat(fs.url, '||') as references
     FROM features f
     JOIN products p ON p.id = f.product_id
+    LEFT JOIN feature_sources fs ON fs.feature_id = f.id
+    GROUP BY f.id
     ORDER BY p.name, f.category
   `).all() as Array<Record<string, unknown>>;
 
@@ -129,7 +177,12 @@ app.get('/api/export/comparison.csv', (_req, res) => {
     'Category',
     'Sub Category',
     'Status',
+    'Description',
+    'Source URL',
+    'Reference URLs',
+    'First Detected',
     'Last Updated',
+    'Change Type',
   ];
   const data = rows.map((r) =>
     [
@@ -138,7 +191,12 @@ app.get('/api/export/comparison.csv', (_req, res) => {
       r.category,
       r.sub_category,
       r.status,
+      r.description,
+      r.source_url,
+      r.references,
+      r.first_detected,
       r.last_updated,
+      r.change_type,
     ]
       .map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`)
       .join(',')
@@ -150,7 +208,7 @@ app.get('/api/export/comparison.csv', (_req, res) => {
 });
 
 app.post('/api/check-now', async (_req, res) => {
-  await runCompetitorCheck();
+  await runCompetitorCheck({ force: true });
   res.json({ ok: true, message: 'Competitor sources checked successfully.' });
 });
 
@@ -161,21 +219,44 @@ app.post('/api/features', (req, res) => {
     category: z.string().min(1),
     subCategory: z.string().optional(),
     status: z.enum(['Available', 'Partial', 'Planned', 'Deprecated', 'Unknown']),
+    description: z.string().optional(),
+    sourceUrl: z.string().url().optional(),
   });
 
   const payload = schema.parse(req.body);
   const now = new Date().toISOString();
   const result = db.prepare(`
-    INSERT INTO features (product_id, name, category, sub_category, status, last_updated)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO features (
+      product_id,
+      name,
+      category,
+      sub_category,
+      status,
+      description,
+      source_url,
+      first_detected,
+      last_updated,
+      change_type
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     payload.productId,
     payload.name,
     payload.category,
     payload.subCategory ?? null,
     payload.status,
-    now
+    payload.description ?? null,
+    payload.sourceUrl ?? null,
+    now,
+    now,
+    'new'
   );
+
+  if (payload.sourceUrl) {
+    db.prepare(
+      'INSERT INTO feature_sources (feature_id, source_type, url) VALUES (?, ?, ?)'
+    ).run(Number(result.lastInsertRowid), 'manual', payload.sourceUrl);
+  }
 
   db.prepare(`
     INSERT INTO updates (product_id, feature_id, update_type, title, detail, source_url)
@@ -185,7 +266,7 @@ app.post('/api/features', (req, res) => {
     Number(result.lastInsertRowid),
     `Feature added: ${payload.name}`,
     'Feature added manually via dashboard workflow.',
-    null
+    payload.sourceUrl ?? null
   );
 
   res.status(201).json({ id: Number(result.lastInsertRowid) });

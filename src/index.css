@@ -132,6 +132,27 @@ td {
   color: #991b1b;
 }
 
+.status-new {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-updated {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-removed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.reference-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .updates-list {
   display: flex;
   flex-direction: column;
