@@ -3,7 +3,6 @@ import express from 'express';
 import cron from 'node-cron';
 import { z } from 'zod';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { db, initDb } from './db';
 import { applyArconPrimaryProfile, seedData } from './seed';
 import { buildInsights } from './insights';
@@ -12,8 +11,7 @@ import { runCompetitorCheck } from './scraper';
 const app = express();
 const port = Number(process.env.PORT || 4000);
 const host = process.env.HOST || '0.0.0.0';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const distPath = path.resolve(__dirname, '../../dist');
+const distPath = path.resolve(process.cwd(), 'dist');
 
 initDb();
 seedData();

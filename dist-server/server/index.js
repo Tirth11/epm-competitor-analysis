@@ -3,7 +3,6 @@ import express from 'express';
 import cron from 'node-cron';
 import { z } from 'zod';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { db, initDb } from './db';
 import { applyArconPrimaryProfile, seedData } from './seed';
 import { buildInsights } from './insights';
@@ -11,8 +10,7 @@ import { runCompetitorCheck } from './scraper';
 const app = express();
 const port = Number(process.env.PORT || 4000);
 const host = process.env.HOST || '0.0.0.0';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const distPath = path.resolve(__dirname, '../../dist');
+const distPath = path.resolve(process.cwd(), 'dist');
 initDb();
 seedData();
 applyArconPrimaryProfile();
@@ -167,12 +165,12 @@ app.post('/api/features', (req, res) => {
 cron.schedule('0 */6 * * *', () => {
     runCompetitorCheck().catch(() => undefined);
 });
-if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(distPath));
-    app.get('*', (_req, res) => {
-        res.sendFile(path.join(distPath, 'index.html'));
-    });
-}
+// Serve static files from dist folder
+app.use(express.static(distPath));
+// Catch-all route: serve index.html for SPA routing
+app.use((_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+});
 app.listen(port, host, () => {
     console.log(`EPM competitor tracker API running on http://${host}:${port}`);
 });
