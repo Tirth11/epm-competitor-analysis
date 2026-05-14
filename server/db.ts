@@ -6,9 +6,11 @@ function getColumns(table: string) {
   return db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
 }
 
-function hasColumn(table: string, column: string) {
-  const columns = getColumns(table);
-  return columns.some((c) => c.name === column);
+function tableExists(table: string) {
+  const row = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?")
+    .get(table);
+  return Boolean(row);
 }
 
 function migrateFeaturesTable() {
@@ -86,6 +88,20 @@ function migrateFeaturesTable() {
   `);
 }
 
+function migrateProductsTable() {
+  if (!tableExists('products')) return;
+  const columnNames = new Set(getColumns('products').map((c) => c.name));
+  if (!columnNames.has('product_type')) {
+    db.exec("ALTER TABLE products ADD COLUMN product_type TEXT NOT NULL DEFAULT 'EPM'");
+  }
+  if (!columnNames.has('vendor')) {
+    db.exec('ALTER TABLE products ADD COLUMN vendor TEXT');
+  }
+  if (!columnNames.has('description')) {
+    db.exec('ALTER TABLE products ADD COLUMN description TEXT');
+  }
+}
+
 export function initDb() {
   db.pragma('journal_mode = WAL');
   db.exec(`
@@ -94,6 +110,9 @@ export function initDb() {
       name TEXT NOT NULL UNIQUE,
       website TEXT NOT NULL,
       is_primary INTEGER NOT NULL DEFAULT 0,
+      product_type TEXT NOT NULL DEFAULT 'EPM',
+      vendor TEXT,
+      description TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -143,12 +162,30 @@ export function initDb() {
       FOREIGN KEY (feature_id) REFERENCES features(id)
     );
 
+    CREATE TABLE IF NOT EXISTS use_cases (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL,
+      industry TEXT,
+      problem TEXT,
+      solution TEXT,
+      outcome TEXT,
+      source_url TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (product_id) REFERENCES products(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_features_product ON features(product_id);
     CREATE INDEX IF NOT EXISTS idx_features_category ON features(category);
     CREATE INDEX IF NOT EXISTS idx_updates_created ON updates(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_use_cases_product ON use_cases(product_id);
+    CREATE INDEX IF NOT EXISTS idx_use_cases_category ON use_cases(category);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_sources_unique ON sources(product_id, source_type, url);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_feature_sources_unique ON feature_sources(feature_id, url);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_use_cases_unique ON use_cases(product_id, title);
   `);
 
+  migrateProductsTable();
   migrateFeaturesTable();
 }
