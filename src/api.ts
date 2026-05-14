@@ -1,15 +1,22 @@
-import type { ComparisonRow, Insights, Product, UpdateItem } from './types';
+import type { ComparisonRow, Insights, Product, UpdateItem, UseCase } from './types';
 
 const base = '/api';
 
-export async function fetchProducts(): Promise<Product[]> {
-  const res = await fetch(`${base}/products`);
+export async function fetchProducts(type?: string): Promise<Product[]> {
+  const query = type ? `?type=${type}` : '';
+  const res = await fetch(`${base}/products${query}`);
   return res.json();
 }
 
 export async function fetchComparison(filters: Record<string, string>): Promise<ComparisonRow[]> {
   const query = new URLSearchParams(filters).toString();
   const res = await fetch(`${base}/comparison${query ? `?${query}` : ''}`);
+  return res.json();
+}
+
+export async function fetchUseCases(filters: Record<string, string>): Promise<UseCase[]> {
+  const query = new URLSearchParams(filters).toString();
+  const res = await fetch(`${base}/use-cases${query ? `?${query}` : ''}`);
   return res.json();
 }
 

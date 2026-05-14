@@ -4,7 +4,7 @@ import cron from 'node-cron';
 import { z } from 'zod';
 import path from 'node:path';
 import { db, initDb } from './db.js';
-import { applyArconPrimaryProfile, seedData } from './seed.js';
+import { seedData } from './seed.js';
 import { buildInsights } from './insights.js';
 import { runCompetitorCheck } from './scraper.js';
 
@@ -15,25 +15,40 @@ const distPath = path.resolve(process.cwd(), 'dist');
 
 initDb();
 seedData();
-applyArconPrimaryProfile();
 runCompetitorCheck().catch(() => undefined);
 
 app.use(cors());
 app.use(express.json());
 
-app.get('/api/products', (_req, res) => {
-  const products = db.prepare('SELECT * FROM products ORDER BY is_primary DESC, name ASC').all();
+// ─── Products ────────────────────────────────────────────────────────────────
+
+app.get('/api/products', (req, res) => {
+  const { type } = req.query as Record<string, string>;
+  let sql = 'SELECT * FROM products';
+  const values: string[] = [];
+  if (type) {
+    sql += ' WHERE product_type = ?';
+    values.push(type);
+  }
+  sql += ' ORDER BY is_primary DESC, name ASC';
+  const products = db.prepare(sql).all(...values);
   res.json(products);
 });
 
+// ─── Comparison ──────────────────────────────────────────────────────────────
+
 app.get('/api/comparison', (req, res) => {
-  const { product, category, status, search, recentlyUpdated, changeType } = req.query as Record<
+  const { product, category, status, search, recentlyUpdated, changeType, type } = req.query as Record<
     string,
     string
   >;
   const conditions: string[] = [];
   const values: unknown[] = [];
 
+  if (type) {
+    conditions.push('p.product_type = ?');
+    values.push(type);
+  }
   if (product) {
     conditions.push('p.name = ?');
     values.push(product);
@@ -66,6 +81,7 @@ app.get('/api/comparison', (req, res) => {
       f.id,
       p.name as product,
       p.is_primary as isPrimary,
+      p.product_type as productType,
       f.name as feature,
       f.category,
       f.sub_category as subCategory,
@@ -82,21 +98,7 @@ app.get('/api/comparison', (req, res) => {
     ${where}
     GROUP BY f.id
     ORDER BY datetime(f.last_updated) DESC, p.is_primary DESC, p.name ASC
-  `).all(...values) as Array<{
-    id: number;
-    product: string;
-    isPrimary: number;
-    feature: string;
-    category: string;
-    subCategory: string | null;
-    status: string;
-    description: string | null;
-    sourceUrl: string | null;
-    firstDetected: string;
-    lastUpdated: string;
-    changeType: string;
-    references: string | null;
-  }>;
+  `).all(...values) as Array<Record<string, unknown>>;
 
   const formatted = rows.map((row) => ({
     ...row,
@@ -105,6 +107,49 @@ app.get('/api/comparison', (req, res) => {
 
   res.json(formatted);
 });
+
+// ─── Use Cases ───────────────────────────────────────────────────────────────
+
+app.get('/api/use-cases', (req, res) => {
+  const { type, product, category } = req.query as Record<string, string>;
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+
+  if (type) {
+    conditions.push('p.product_type = ?');
+    values.push(type);
+  }
+  if (product) {
+    conditions.push('p.name = ?');
+    values.push(product);
+  }
+  if (category) {
+    conditions.push('uc.category = ?');
+    values.push(category);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const rows = db.prepare(`
+    SELECT
+      uc.id,
+      p.name as product,
+      p.product_type as productType,
+      uc.title,
+      uc.category,
+      uc.industry,
+      uc.problem,
+      uc.solution,
+      uc.outcome,
+      uc.source_url as sourceUrl
+    FROM use_cases uc
+    JOIN products p ON p.id = uc.product_id
+    ${where}
+    ORDER BY p.name ASC, uc.category ASC
+  `).all(...values);
+  res.json(rows);
+});
+
+// ─── Updates ─────────────────────────────────────────────────────────────────
 
 app.get('/api/updates', (_req, res) => {
   const updates = db.prepare(`
@@ -124,9 +169,13 @@ app.get('/api/updates', (_req, res) => {
   res.json(updates);
 });
 
+// ─── Insights ────────────────────────────────────────────────────────────────
+
 app.get('/api/insights', (_req, res) => {
   res.json(buildInsights());
 });
+
+// ─── Reports ─────────────────────────────────────────────────────────────────
 
 app.get('/api/reports/weekly', (_req, res) => {
   const rows = db.prepare(`
@@ -150,10 +199,13 @@ app.get('/api/reports/monthly', (_req, res) => {
   res.json({ period: 'monthly', generatedAt: new Date().toISOString(), items: rows });
 });
 
+// ─── CSV Export ──────────────────────────────────────────────────────────────
+
 app.get('/api/export/comparison.csv', (_req, res) => {
   const rows = db.prepare(`
     SELECT
       p.name,
+      p.product_type,
       f.name as feature,
       f.category,
       f.sub_category,
@@ -168,11 +220,12 @@ app.get('/api/export/comparison.csv', (_req, res) => {
     JOIN products p ON p.id = f.product_id
     LEFT JOIN feature_sources fs ON fs.feature_id = f.id
     GROUP BY f.id
-    ORDER BY p.name, f.category
+    ORDER BY p.product_type, p.name, f.category
   `).all() as Array<Record<string, unknown>>;
 
   const header = [
     'Product',
+    'Type',
     'Feature',
     'Category',
     'Sub Category',
@@ -187,6 +240,7 @@ app.get('/api/export/comparison.csv', (_req, res) => {
   const data = rows.map((r) =>
     [
       r.name,
+      r.product_type,
       r.feature,
       r.category,
       r.sub_category,
@@ -203,14 +257,11 @@ app.get('/api/export/comparison.csv', (_req, res) => {
   );
 
   res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="epm-comparison.csv"');
+  res.setHeader('Content-Disposition', 'attachment; filename="epm-edr-comparison.csv"');
   res.send([header.join(','), ...data].join('\n'));
 });
 
-app.post('/api/check-now', async (_req, res) => {
-  await runCompetitorCheck({ force: true });
-  res.json({ ok: true, message: 'Competitor sources checked successfully.' });
-});
+// ─── Manual Feature Addition ─────────────────────────────────────────────────
 
 app.post('/api/features', (req, res) => {
   const schema = z.object({
@@ -227,16 +278,8 @@ app.post('/api/features', (req, res) => {
   const now = new Date().toISOString();
   const result = db.prepare(`
     INSERT INTO features (
-      product_id,
-      name,
-      category,
-      sub_category,
-      status,
-      description,
-      source_url,
-      first_detected,
-      last_updated,
-      change_type
+      product_id, name, category, sub_category, status, description, source_url,
+      first_detected, last_updated, change_type
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
@@ -272,18 +315,26 @@ app.post('/api/features', (req, res) => {
   res.status(201).json({ id: Number(result.lastInsertRowid) });
 });
 
+// ─── Trigger manual check ────────────────────────────────────────────────────
+
+app.post('/api/check-now', async (_req, res) => {
+  await runCompetitorCheck({ force: true });
+  res.json({ ok: true, message: 'Competitor sources checked successfully.' });
+});
+
+// ─── Cron ────────────────────────────────────────────────────────────────────
+
 cron.schedule('0 */6 * * *', () => {
   runCompetitorCheck().catch(() => undefined);
 });
 
-// Serve static files from dist folder
-app.use(express.static(distPath));
+// ─── Static + SPA fallback ───────────────────────────────────────────────────
 
-// Catch-all route: serve index.html for SPA routing
+app.use(express.static(distPath));
 app.use((_req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
 app.listen(port, host, () => {
-  console.log(`EPM competitor tracker API running on http://${host}:${port}`);
+  console.log(`EPM & EDR competitor tracker API running on http://${host}:${port}`);
 });
